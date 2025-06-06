@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>接蘋果遊戲</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 0;
+    }
+    canvas {
+      border: 2px solid #444;
+      background: #eef;
+      margin-top: 10px;
+    }
+    #info {
+      font-size: 18px;
+      margin: 10px;
+    }
+    #info select {
+      font-size: 16px;
+    }
+    #instructions {
+      margin: 20px auto;
+      width: 80%;
+      padding: 12px;
+      background: #fff3cd;
+      border: 1px solid #ffeeba;
+      border-radius: 8px;
+      text-align: left;
+      font-size: 16px;
+    }
+    #instructions ul {
+      padding-left: 1.2em;
+    }
+  </style>
+</head>
+<body>
+  <h2>🍎 接蘋果遊戲</h2>
+
+  <div id="info">
+    生命值: <span id="lives">10</span> |
+    模式:
+    <select id="modeSelect">
+      <option value="normal">普通</option>
+      <option value="hard">困難</option>
+    </select>
+  </div>
+
+  <canvas id="gameCanvas" width="600" height="400"></canvas>
+
+  <!-- 操作說明移到底部 -->
+  <div id="instructions">
+    <strong>🎮 遊戲說明：</strong>
+    <ul>
+      <li>使用鍵盤 <strong>←</strong> 與 <strong>→</strong> 移動籃子接住蘋果</li>
+      <li>🍎 <strong>普通蘋果：</strong> +1 生命值</li>
+      <li>🍏 <strong>金蘋果：</strong> +2 生命值</li>
+      <li>☠️ <strong>毒蘋果：</strong> -1 生命值</li>
+      <li>普通模式：達到 <strong>50</strong> 生命值通關</li>
+      <li>困難模式：達到 <strong>100</strong> 生命值通關（毒蘋果出現更多）</li>
+      <li>生命值歸零遊戲結束</li>
+    </ul>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    let player = { x: 280, width: 60 };
+    let apples = [];
+    let lives = 10;
+    let mode = 'normal';
+    let goal = 50;
+    let gameOver = false;
+
+    const modeSelect = document.getElementById("modeSelect");
+    const livesDisplay = document.getElementById("lives");
+
+    modeSelect.addEventListener("change", () => {
+      mode = modeSelect.value;
+      resetGame();
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowLeft") player.x -= 20;
+      if (e.key === "ArrowRight") player.x += 20;
+      player.x = Math.max(0, Math.min(player.x, canvas.width - player.width));
+    });
+
+    function resetGame() {
+      lives = 10;
+      goal = mode === "normal" ? 50 : 100;
+      apples = [];
+      gameOver = false;
+      livesDisplay.textContent = lives;
+    }
+
+    function spawnApple() {
+      const rand = Math.random();
+      let type = "normal";
+
+      if (mode === "hard") {
+        if (rand < 0.5) type = "poison";
+        else if (rand < 0.6) type = "gold";
+      } else {
+        if (rand < 0.1) type = "poison";
+        else if (rand < 0.2) type = "gold";
+      }
+
+      apples.push({
+        x: Math.random() * (canvas.width - 20),
+        y: 0,
+        type: type
+      });
+    }
+
+    function updateGame() {
+      if (gameOver) return;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // 玩家
+      ctx.fillStyle = "#444";
+      ctx.fillRect(player.x, canvas.height - 20, player.width, 10);
+
+      // 蘋果
+      for (let i = apples.length - 1; i >= 0; i--) {
+        let apple = apples[i];
+        apple.y += 3;
+
+        if (apple.type === "poison") ctx.fillStyle = "purple";
+        else if (apple.type === "gold") ctx.fillStyle = "gold";
+        else ctx.fillStyle = "red";
+
+        ctx.beginPath();
+        ctx.arc(apple.x, apple.y, 10, 0, Math.PI * 2);
+        ctx.fill();
+
+        // 碰到玩家
+        if (
+          apple.y >= canvas.height - 30 &&
+          apple.x >= player.x &&
+          apple.x <= player.x + player.width
+        ) {
+          if (apple.type === "poison") lives -= 1;
+          else if (apple.type === "gold") lives += 2;
+          else lives += 1;
+          apples.splice(i, 1);
+          continue;
+        }
+
+        // 超出畫面
+        if (apple.y > canvas.height) {
+          apples.splice(i, 1);
+        }
+      }
+
+      livesDisplay.textContent = lives;
+
+      if (lives <= 0) {
+        alert("💀 你被毒蘋果毒死了，遊戲結束！");
+        gameOver = true;
+        resetGame();
+      } else if (lives >= goal) {
+        alert(`🎉 恭喜你達到 ${goal} 生命值，通關成功！`);
+        gameOver = true;
+        resetGame();
+      }
+    }
+
+    // 遊戲迴圈與蘋果生成
+    setInterval(() => {
+      if (!gameOver && Math.random() < 0.25) spawnApple();
+    }, 400);
+    setInterval(updateGame, 30);
+  </script>
+</body>
+</html>

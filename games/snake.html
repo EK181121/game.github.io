@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>貪吃蛇遊戲</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; }
+    canvas { border: 1px solid black; display: block; margin: 20px auto; background: #f0f0f0; }
+    #status { font-size: 18px; margin-top: 10px; }
+    #instructions { margin-top: 20px; font-size: 16px; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <h1>貪吃蛇</h1>
+  <canvas id="snakeCanvas" width="400" height="400"></canvas>
+  <div id="status"></div>
+  <div id="instructions">
+    <h2>遊戲說明</h2>
+    <ul style="text-align: left; display: inline-block;">
+      <li>使用鍵盤方向鍵控制貪吃蛇的移動。</li>
+      <li>吃到紅色的蘋果可以讓貪吃蛇變長。</li>
+      <li>若撞到自己或磚塊遊戲結束。</li>
+      <li>遊戲場地無邊界，蛇可以從一側穿越到另一側。</li>
+      <li>畫面上固定有 2 個磚塊，每 5 秒會重新生成位置。</li>
+    </ul>
+  </div>
+  <script>
+    const canvas = document.getElementById("snakeCanvas");
+    const ctx = canvas.getContext("2d");
+    const gridSize = 20;
+    const tileCount = canvas.width / gridSize;
+
+    let snake = [{ x: 10, y: 10 }];
+    let apple = randomPos();
+    let bricks = [randomPos(), randomPos()];
+    let dx = 1, dy = 0;
+    let gameOver = false;
+
+    function randomPos() {
+      return {
+        x: Math.floor(Math.random() * tileCount),
+        y: Math.floor(Math.random() * tileCount)
+      };
+    }
+
+    function refreshBricks() {
+      bricks = [randomPos(), randomPos()];
+    }
+
+    setInterval(() => {
+      if (!gameOver) refreshBricks();
+    }, 5000);
+
+    function draw() {
+      if (gameOver) return;
+      setTimeout(() => requestAnimationFrame(draw), 150);
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const head = { x: (snake[0].x + dx + tileCount) % tileCount, y: (snake[0].y + dy + tileCount) % tileCount };
+      if (snake.some(s => s.x === head.x && s.y === head.y)) {
+        endGame("你撞到自己了！");
+        return;
+      }
+      if (bricks.some(b => b.x === head.x && b.y === head.y)) {
+        endGame("你撞到磚塊了！");
+        return;
+      }
+      snake.unshift(head);
+      if (head.x === apple.x && head.y === apple.y) {
+        apple = randomPos();
+      } else {
+        snake.pop();
+      }
+
+      ctx.fillStyle = "red";
+      ctx.fillRect(apple.x * gridSize, apple.y * gridSize, gridSize, gridSize);
+
+      ctx.fillStyle = "gray";
+      bricks.forEach(b => ctx.fillRect(b.x * gridSize, b.y * gridSize, gridSize, gridSize));
+
+      ctx.fillStyle = "green";
+      snake.forEach(s => ctx.fillRect(s.x * gridSize, s.y * gridSize, gridSize, gridSize));
+    }
+
+    function endGame(msg) {
+      gameOver = true;
+      document.getElementById("status").innerText = msg;
+    }
+
+    document.addEventListener("keydown", e => {
+      if (e.key === "ArrowUp" && dy === 0) { dx = 0; dy = -1; }
+      if (e.key === "ArrowDown" && dy === 0) { dx = 0; dy = 1; }
+      if (e.key === "ArrowLeft" && dx === 0) { dx = -1; dy = 0; }
+      if (e.key === "ArrowRight" && dx === 0) { dx = 1; dy = 0; }
+    });
+
+    draw();
+  </script>
+</body>
+</html>

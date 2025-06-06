@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>五子棋 - 支援1P / 2P 模式</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; background: #f9f9f9; }
+    canvas { background: #f0d9b5; border: 2px solid #333; margin-top: 10px; }
+    #info, #instructions {
+      margin: 10px auto;
+      font-size: 16px;
+    }
+    select { font-size: 16px; margin-left: 5px; }
+    #instructions {
+      width: 80%;
+      padding: 10px;
+      background: #e0f7ff;
+      border: 1px solid #a6d4f2;
+      border-radius: 8px;
+      text-align: left;
+    }
+  </style>
+</head>
+<body>
+  <h2>⚫⚪ 五子棋遊戲（1P / 2P）</h2>
+
+  <div id="info">
+    模式：
+    <select id="modeSelect">
+      <option value="easy">簡單模式（3分勝）</option>
+      <option value="hard">困難模式（5分勝）</option>
+    </select>
+    玩家模式：
+    <select id="playerMode">
+      <option value="1p">1P（玩家 vs 電腦）</option>
+      <option value="2p">2P（玩家 vs 玩家）</option>
+    </select>
+    電腦智力：
+    <select id="aiSelect">
+      <option value="simple">簡單電腦</option>
+      <option value="smart" selected>進階電腦</option>
+    </select>
+    <br><br>
+    ⚪ 玩家 1 得分：<span id="playerScore">0</span> |
+    ⚫ 玩家 2 / 電腦 得分：<span id="aiScore">0</span>
+    <div id="turnText">輪到：玩家 1（⚪）</div>
+  </div>
+
+  <canvas id="board" width="600" height="600"></canvas>
+
+  <div id="instructions">
+    <strong>🎮 遊戲操作說明：</strong>
+    <ul>
+      <li>點擊棋盤下棋</li>
+      <li>⚪ 玩家 1 先手，⚫ 玩家 2 或電腦為後手</li>
+      <li>五子連線得 1 分，分數不重複計算</li>
+      <li>簡單模式需達 3 分獲勝，困難模式需 5 分</li>
+    </ul>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("board");
+    const ctx = canvas.getContext("2d");
+    const size = 15;
+    const cell = canvas.width / size;
+
+    let board, scored, playerScore, aiScore, gameOver;
+    let mode, aiType, playerMode;
+    let currentPlayer = 'W'; // 玩家 1 先手
+
+    function initGame() {
+      board = Array.from({ length: size }, () => Array(size).fill(null));
+      scored = { W: new Set(), B: new Set() };
+      playerScore = aiScore = 0;
+      gameOver = false;
+      currentPlayer = 'W';
+      mode = document.getElementById("modeSelect").value;
+      aiType = document.getElementById("aiSelect").value;
+      playerMode = document.getElementById("playerMode").value;
+      updateScores();
+      drawBoard();
+    }
+
+    document.getElementById("modeSelect").addEventListener("change", initGame);
+    document.getElementById("aiSelect").addEventListener("change", initGame);
+    document.getElementById("playerMode").addEventListener("change", initGame);
+
+    canvas.addEventListener("click", (e) => {
+      if (gameOver) return;
+      const x = Math.floor(e.offsetX / cell);
+      const y = Math.floor(e.offsetY / cell);
+      if (board[y][x]) return;
+
+      if (playerMode === '2p') {
+        board[y][x] = currentPlayer;
+        checkNewLines(x, y, currentPlayer);
+        currentPlayer = (currentPlayer === 'W') ? 'B' : 'W';
+        updateTurnText();
+      } else {
+        if (currentPlayer === 'W') {
+          board[y][x] = 'W';
+          checkNewLines(x, y, 'W');
+          currentPlayer = 'B';
+          aiMove();
+          currentPlayer = 'W';
+        }
+      }
+    });
+
+    function updateTurnText() {
+      const text = playerMode === '2p'
+        ? `輪到：${currentPlayer === 'W' ? '玩家 1（⚪）' : '玩家 2（⚫）'}`
+        : "你 vs 電腦";
+      document.getElementById("turnText").textContent = text;
+    }
+
+    function drawBoard() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = "#000";
+      for (let i = 0; i < size; i++) {
+        ctx.beginPath();
+        ctx.moveTo(cell / 2, cell / 2 + i * cell);
+        ctx.lineTo(canvas.width - cell / 2, cell / 2 + i * cell);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(cell / 2 + i * cell, cell / 2);
+        ctx.lineTo(cell / 2 + i * cell, canvas.height - cell / 2);
+        ctx.stroke();
+      }
+
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          if (board[y][x]) {
+            ctx.beginPath();
+            ctx.arc(x * cell + cell / 2, y * cell + cell / 2, cell / 3, 0, Math.PI * 2);
+            ctx.fillStyle = board[y][x] === 'B' ? "black" : "white";
+            ctx.fill();
+            ctx.stroke();
+          }
+        }
+      }
+    }
+
+    function updateScores() {
+      document.getElementById("playerScore").textContent = playerScore;
+      document.getElementById("aiScore").textContent = aiScore;
+      const win = (mode === "easy" ? 3 : 5);
+      if (playerScore >= win) {
+        alert("🎉 玩家 1（⚪）獲勝！");
+        gameOver = true;
+      } else if (aiScore >= win) {
+        const winner = playerMode === '2p' ? "玩家 2（⚫）" : "電腦";
+        alert(`🎉 ${winner} 獲勝！`);
+        gameOver = true;
+      }
+    }
+
+    function keyOfLine(line) {
+      return line.map(([x, y]) => `${x},${y}`).sort().join("|");
+    }
+
+    function checkNewLines(x, y, who) {
+      const dirs = [
+        [[1, 0], [-1, 0]],
+        [[0, 1], [0, -1]],
+        [[1, 1], [-1, -1]],
+        [[1, -1], [-1, 1]],
+      ];
+      for (let [dir1, dir2] of dirs) {
+        let line = [[x, y]];
+        for (let [dx, dy] of [dir1, dir2]) {
+          let nx = x + dx, ny = y + dy;
+          while (
+            nx >= 0 && ny >= 0 && nx < size && ny < size &&
+            board[ny][nx] === who
+          ) {
+            line.push([nx, ny]);
+            nx += dx;
+            ny += dy;
+          }
+        }
+        if (line.length >= 5) {
+          const key = keyOfLine(line.slice(0, 5));
+          if (!scored[who].has(key)) {
+            scored[who].add(key);
+            if (who === 'W') playerScore++;
+            else aiScore++;
+            updateScores();
+          }
+        }
+      }
+    }
+
+    function aiMove() {
+      if (gameOver || playerMode !== '1p') return;
+
+      if (aiType === "simple") {
+        const options = [];
+        for (let y = 0; y < size; y++) {
+          for (let x = 0; x < size; x++) {
+            if (!board[y][x]) options.push({ x, y });
+          }
+        }
+        const move = options[Math.floor(Math.random() * options.length)];
+        board[move.y][move.x] = 'B';
+        checkNewLines(move.x, move.y, 'B');
+        return;
+      }
+
+      // 進階 AI
+      let best = null;
+      const score = (x, y, who) => {
+        let count = 0;
+        const dirs = [
+          [[1, 0], [-1, 0]],
+          [[0, 1], [0, -1]],
+          [[1, 1], [-1, -1]],
+          [[1, -1], [-1, 1]],
+        ];
+        for (let [d1, d2] of dirs) {
+          let total = 1;
+          for (let [dx, dy] of [d1, d2]) {
+            let nx = x + dx, ny = y + dy;
+            while (nx >= 0 && ny >= 0 && nx < size && ny < size && board[ny][nx] === who) {
+              total++;
+              nx += dx;
+              ny += dy;
+            }
+          }
+          if (total >= 4) count += 10;
+          else count += total;
+        }
+        return count;
+      };
+
+      let maxScore = -1;
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          if (!board[y][x]) {
+            const attack = score(x, y, 'B');
+            const defend = score(x, y, 'W') * 0.9;
+            const total = attack + defend - Math.abs(x - 7) - Math.abs(y - 7);
+            if (total > maxScore) {
+              maxScore = total;
+              best = { x, y };
+            }
+          }
+        }
+      }
+
+      if (best) {
+        board[best.y][best.x] = 'B';
+        checkNewLines(best.x, best.y, 'B');
+      }
+    }
+
+    initGame();
+    setInterval(drawBoard, 100);
+  </script>
+</body>
+</html>
