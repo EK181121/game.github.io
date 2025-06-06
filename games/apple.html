@@ -44,7 +44,7 @@
   <div id="info">
     生命值: <span id="lives">10</span> |
     模式:
-    <select id="modeSelect">
+    <select id="modeSelect" onkeydown="return false;">
       <option value="normal">普通</option>
       <option value="hard">困難</option>
     </select>
@@ -52,7 +52,6 @@
 
   <canvas id="gameCanvas" width="600" height="400"></canvas>
 
-  <!-- 操作說明移到底部 -->
   <div id="instructions">
     <strong>🎮 遊戲說明：</strong>
     <ul>
@@ -86,6 +85,8 @@
     });
 
     document.addEventListener("keydown", (e) => {
+      modeSelect.blur(); // 避免方向鍵切換模式選單
+
       if (e.key === "ArrowLeft") player.x -= 20;
       if (e.key === "ArrowRight") player.x += 20;
       player.x = Math.max(0, Math.min(player.x, canvas.width - player.width));
